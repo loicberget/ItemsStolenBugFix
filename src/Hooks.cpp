@@ -31,35 +31,44 @@ namespace Hooks
     bool ActivateFlora::Thunk(RE::TESFlora* a_this, RE::TESObjectREFR* a_targetRef, RE::TESObjectREFR* a_activatorRef, std::uint8_t a_arg3,
                               RE::TESBoundObject* a_object, std::int32_t a_targetCount)
     {
-        const auto result{ func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount) };
 
         if (!a_targetRef)
+        {
+            const auto result{ func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount) };
             return result;
+        }
 
         const auto name{ a_targetRef->GetName() };
         const auto form_id{ a_targetRef->GetFormID() };
 
         if ("Coin Purse"sv.compare(name) || !a_targetRef->IsCrimeToActivate())
+        {
+            const auto result{ func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount) };
             return result;
+        }
 
         logger::debug("Player stealing {} (0x{:x}). Incrementing Items Stolen...", name, form_id);
         IncrementStat();
 
+        const auto result{ func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount) };
         return result;
     }
 
     void AddObjectToContainer::Thunk(RE::Actor* a_this, RE::TESBoundObject* a_object, RE::ExtraDataList* a_extraList, std::int32_t a_count,
                                      RE::TESObjectREFR* a_fromRefr)
     {
-        func(a_this, a_object, a_extraList, a_count, a_fromRefr);
 
-        if (!(a_fromRefr && a_extraList && a_object))
+        if (!(a_fromRefr && a_extraList && a_object)){
+            func(a_this, a_object, a_extraList, a_count, a_fromRefr);
             return;
+        }
 
         if (const auto ui{ RE::UI::GetSingleton() })
         {
-            if (ui->IsMenuOpen(RE::BarterMenu::MENU_NAME))
+            if (ui->IsMenuOpen(RE::BarterMenu::MENU_NAME)){
+                func(a_this, a_object, a_extraList, a_count, a_fromRefr);
                 return;
+            }
         }
 
         if (const auto origin{ a_fromRefr->GetBaseObject() })
@@ -72,7 +81,10 @@ namespace Hooks
             logger::debug("Taking object {} (0x{:x}) from {} (0x{:x}) ({})", obj_name, obj_form_id, origin_name, origin_form_id, origin_form_type);
 
             if (origin_form_type <=> RE::FormType::Container != 0)
+            {
+                func(a_this, a_object, a_extraList, a_count, a_fromRefr);
                 return;
+            }
 
             if (const auto player{ RE::PlayerCharacter::GetSingleton() })
             {
@@ -81,6 +93,7 @@ namespace Hooks
                     if (container_owner->IsPlayerRef())
                     {
                         logger::debug("Container {} (0x{:x}) belongs to player", origin_name, origin_form_id);
+                        func(a_this, a_object, a_extraList, a_count, a_fromRefr);
                         return;
                     }
                 }
@@ -93,10 +106,12 @@ namespace Hooks
                         if (player->IsInFaction(owner_faction))
                         {
                             logger::debug("Player belongs to owner faction {}", owner_faction->GetName());
+                            func(a_this, a_object, a_extraList, a_count, a_fromRefr);
                             return;
                         }
                         logger::debug("\tPlayer is not owner of {} (0x{:x}). Incrementing Items Stolen...", obj_name, obj_form_id);
                         IncrementStat();
+                        func(a_this, a_object, a_extraList, a_count, a_fromRefr);
                         return;
                     }
                     if (!owner->IsPlayerRef())
@@ -111,13 +126,17 @@ namespace Hooks
 
     void PickupObject::Thunk(RE::PlayerCharacter* a_this, RE::TESObjectREFR* a_ref, uint32_t a_count, bool a_arg3, bool a_playSound)
     {
-        func(a_this, a_ref, a_count, a_arg3, a_playSound);
-
         if (!a_ref)
+        {
+            func(a_this, a_ref, a_count, a_arg3, a_playSound);
             return;
+        }
 
         if (!a_ref->IsCrimeToActivate() || !a_ref->IsGold())
+        {
+            func(a_this, a_ref, a_count, a_arg3, a_playSound);
             return;
+        }
 
         logger::debug("Player stealing coin. Incrementing Items Stolen...");
         IncrementStat();
